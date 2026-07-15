@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プロモ進行ToDo ｜ 初期セットアップ</title>
+<style>
+body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;color:#1d3149;
+  background:linear-gradient(180deg,#f2f7fb,#fdf1f4 55%,#f3f0f7);min-height:100vh;margin:0;padding:24px 16px;line-height:1.8}
+.wrap{max-width:720px;margin:0 auto}
+h1{font-size:20px;background:linear-gradient(90deg,#8FC0EC,#C99BE8,#F5A6C8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.card{background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 8px 24px rgba(120,110,160,.14);border:1px solid #e9dfe9;margin:14px 0}
+.step{font-weight:800;color:#B98BEA;font-size:13px;margin-bottom:4px}
+.link{display:inline-block;background:#7FB0D2;color:#fff;text-decoration:none;font-weight:700;padding:8px 14px;border-radius:10px;margin:6px 0;font-size:14px}
+button{background:linear-gradient(135deg,#8FC0EC,#C99BE8,#F5A6C8);color:#fff;border:none;font-weight:800;padding:10px 16px;border-radius:10px;cursor:pointer;font-size:14px}
+pre{background:#1d2331;color:#d7e2ef;border-radius:12px;padding:14px;overflow:auto;font-size:11.5px;line-height:1.5;max-height:300px}
+code{background:#f3eef7;padding:1px 6px;border-radius:5px;color:#B98BEA}
+a.plain{color:#7FB0D2;font-weight:700}
+.ok{color:#4a9d6e;font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎡 プロモ進行ToDo ｜ 初期セットアップ</h1>
+  <p>この作業は<b>最初の1回だけ</b>。以降はみんなが <a class="plain" href="./index.html">ToDoページ</a> を開くだけで使えます。<br>
+  Re:alize と同じ Supabase に相乗りで、<b>既存データには一切触れません。</b></p>
+
+  <div class="card">
+    <div class="step">STEP 1</div>
+    <b>Supabase の SQLエディタを開く</b>
+    <div><a class="link" href="https://supabase.com/dashboard/project/inrvprlyobghviklulcv/sql/new" target="_blank">▶ SQLエディタを開く</a></div>
+  </div>
+
+  <div class="card">
+    <div class="step">STEP 2</div>
+    <b>下のSQLをコピー → 貼り付け → 右下の緑 <code>RUN</code></b>
+    <div><button onclick="copySql()">📋 SQLをコピー</button> <span id="copied" class="ok"></span></div>
+    <pre id="sql">読み込み中…</pre>
+    <p>「<span class="ok">Success. No rows returned</span>」と出れば完了です。</p>
+  </div>
+
+  <div class="card">
+    <div class="step">STEP 3</div>
+    <b>ToDoページを開いて全員に共有</b>
+    <div><a class="link" href="./index.html">▶ ToDoページを開く</a></div>
+    <p style="font-size:13px">左上の接続ランプが<b>緑（リアルタイム同期中）</b>になればOK。<br>
+    プロモごとに分けたいときは URL の最後に <code>?promo=名前</code> を付けて配布します。<br>
+    例）<code>?promo=smasell-2026-08</code></p>
+  </div>
+</div>
+
+<script>
+const SQL = `-- Merone プロモーション進行ToDo テーブル定義（Re:alizeに相乗り・既存に無干渉）
+CREATE TABLE IF NOT EXISTS promo_tasks (
+  run_id      TEXT NOT NULL DEFAULT 'default',
+  task_key    TEXT NOT NULL,
+  done        BOOLEAN DEFAULT FALSE,
+  owner_name  TEXT DEFAULT '',
+  memo        TEXT DEFAULT '',
+  link_url    TEXT DEFAULT '',
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (run_id, task_key)
+);
+
+ALTER TABLE promo_tasks REPLICA IDENTITY FULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'promo_tasks'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE promo_tasks;
+  END IF;
+END $$;
+
+ALTER TABLE promo_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "promo_anon_select" ON promo_tasks;
+DROP POLICY IF EXISTS "promo_anon_insert" ON promo_tasks;
+DROP POLICY IF EXISTS "promo_anon_update" ON promo_tasks;
+DROP POLICY IF EXISTS "promo_anon_delete" ON promo_tasks;
+CREATE POLICY "promo_anon_select" ON promo_tasks FOR SELECT USING (true);
+CREATE POLICY "promo_anon_insert" ON promo_tasks FOR INSERT WITH CHECK (true);
+CREATE POLICY "promo_anon_update" ON promo_tasks FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "promo_anon_delete" ON promo_tasks FOR DELETE USING (true);`;
+document.getElementById('sql').textContent = SQL;
+function copySql(){ navigator.clipboard.writeText(SQL).then(()=>{ document.getElementById('copied').textContent='✓ コピーしました'; }); }
+</script>
+</body>
+</html>
