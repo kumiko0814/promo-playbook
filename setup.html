@@ -51,37 +51,51 @@ a.plain{color:#7FB0D2;font-weight:700}
 
 <script>
 const SQL = `-- Merone プロモーション進行ToDo テーブル定義（Re:alizeに相乗り・既存に無干渉）
+-- ※前バージョンを既に流していても、そのまま貼ってRUNでOK（新カラムを足すだけ・データは消えません）
 CREATE TABLE IF NOT EXISTS promo_tasks (
-  run_id      TEXT NOT NULL DEFAULT 'default',
-  task_key    TEXT NOT NULL,
-  done        BOOLEAN DEFAULT FALSE,
-  owner_name  TEXT DEFAULT '',
-  memo        TEXT DEFAULT '',
-  link_url    TEXT DEFAULT '',
-  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  run_id        TEXT NOT NULL DEFAULT 'default',
+  task_key      TEXT NOT NULL,
+  done          BOOLEAN DEFAULT FALSE,
+  owner_depts   TEXT,
+  owner_members TEXT,
+  memo          TEXT DEFAULT '',
+  link_url      TEXT DEFAULT '',
+  updated_at    TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (run_id, task_key)
 );
+-- 既存テーブルへの移行（新チーム分け・複数担当対応）
+ALTER TABLE promo_tasks ADD COLUMN IF NOT EXISTS owner_depts   TEXT;
+ALTER TABLE promo_tasks ADD COLUMN IF NOT EXISTS owner_members TEXT;
 
-ALTER TABLE promo_tasks REPLICA IDENTITY FULL;
+CREATE TABLE IF NOT EXISTS promo_members (
+  email       TEXT PRIMARY KEY,
+  name        TEXT DEFAULT '',
+  depts       TEXT DEFAULT '',
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE promo_tasks   REPLICA IDENTITY FULL;
+ALTER TABLE promo_members REPLICA IDENTITY FULL;
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'promo_tasks'
-  ) THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND tablename='promo_tasks') THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE promo_tasks;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND tablename='promo_members') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE promo_members;
   END IF;
 END $$;
 
-ALTER TABLE promo_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE promo_tasks   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE promo_members ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "promo_anon_select" ON promo_tasks;
 DROP POLICY IF EXISTS "promo_anon_insert" ON promo_tasks;
 DROP POLICY IF EXISTS "promo_anon_update" ON promo_tasks;
 DROP POLICY IF EXISTS "promo_anon_delete" ON promo_tasks;
-CREATE POLICY "promo_anon_select" ON promo_tasks FOR SELECT USING (true);
-CREATE POLICY "promo_anon_insert" ON promo_tasks FOR INSERT WITH CHECK (true);
-CREATE POLICY "promo_anon_update" ON promo_tasks FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "promo_anon_delete" ON promo_tasks FOR DELETE USING (true);`;
+DROP POLICY IF EXISTS "promo_tasks_anon_all"   ON promo_tasks;
+DROP POLICY IF EXISTS "promo_members_anon_all" ON promo_members;
+CREATE POLICY "promo_tasks_anon_all"   ON promo_tasks   FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "promo_members_anon_all" ON promo_members FOR ALL USING (true) WITH CHECK (true);`;
 document.getElementById('sql').textContent = SQL;
 function copySql(){ navigator.clipboard.writeText(SQL).then(()=>{ document.getElementById('copied').textContent='✓ コピーしました'; }); }
 </script>
