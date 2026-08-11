@@ -222,11 +222,14 @@ const PHASES = [
   { id:'p1', title:'オープンチャット作成＋スタッフ追加', tasks:[
     {key:'p1-1', title:'LINEオープンチャットを新規作成（プロモ名でネーミング）', owners:['kanri'],
       link:{label:'オプチャ作成手順', url:'https://guide.line.me/ja/services/openchat.html'}},
-    {key:'p1-2', title:'運営スタッフを全員招待', owners:['kanri'], link:{label:'招待リンク', url:''}},
+    {key:'p1-2', title:'オプチャに管理者を入れる（管理部・岡本さん／アクセラ・ひかさん）', owners:['kanri','accel'],
+      detail:'オープンチャットの<b>共同管理者</b>に、<b>管理部の岡本さん</b>と<b>アクセラのひかさん</b>を入れる。荒れ防止と、当日の運営（固定・削除・@All・承認）を分担する。', link:{label:'招待リンク', url:''}},
     {key:'p1-3', title:'固定メッセージを設定（ルール／提出方法／合言葉案内）', owners:['kanri','cx'],
       detail:'①自己紹介を書く ②動画はリアタイ視聴 ③質問は必ず専用LINEへ ④課題は翌日18時まで。見本は運用マニュアル参照。',
       link:{label:'運用マニュアル見本', url:'https://kumiko0814.github.io/reseller/challenge-manual.html'}},
     {key:'p1-4', title:'オプチャ招待URLをLP・プロライン・ツールに反映', owners:['kanri','dev']},
+    {key:'p1-5', title:'対象者への声かけ（参加のお誘い・ご案内）', owners:['co'],
+      detail:'<b>COチーム担当。</b>参加対象者（アライアンス先の生徒・過去リードなど）に個別で声をかけ、オープンチャットへお誘いする。誰にいつ声かけするかをCO内で分担して、漏れなく届ける。'},
   ]},
   { id:'p2', title:'登壇者の選定（COチームへ依頼）', tasks:[
     {key:'p2-1', title:'各アライアンス先から成果トップ10を選出', owners:['co']},
