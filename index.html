@@ -500,7 +500,7 @@ function taskEl(t){
   assign.appendChild(editB);
   if(myEmail && !mem.includes(myEmail)){
     const meB=document.createElement('button'); meB.className='mebtn'; meB.textContent='私がやる';
-    meB.onclick=()=>{ const nm=[...taskMembers(t),myEmail]; upsertTask(t.key,{owner_members:nm.join(',')}).then(()=>patchTask(t.key)); };
+    meB.onclick=()=>{ const nm=[...taskMembers(t),myEmail]; upsertTask(t.key,{owner_members:nm.join(',')}).then(()=>rebuildTask(t.key)); };
     assign.appendChild(meB);
   }
   main.appendChild(assign);
@@ -536,12 +536,11 @@ function buildAssignEditor(t){
   DEPT_KEYS.forEach(k=>{
     const b=document.createElement('button'); const on=cur.includes(k); b.className='tgl'+(on?' on':''); if(on) b.style.background=DEPTS[k].color;
     b.innerHTML='<span class="cdot" style="background:'+DEPTS[k].color+'"></span>'+DEPTS[k].label;
-    b.onclick=()=>{ let d=taskDepts(t); d=d.includes(k)?d.filter(x=>x!==k):[...d,k]; upsertTask(t.key,{owner_depts:d.join(',')}).then(()=>patchTask(t.key)); };
+    b.onclick=()=>{ let d=taskDepts(t); d=d.includes(k)?d.filter(x=>x!==k):[...d,k]; upsertTask(t.key,{owner_depts:d.join(',')}).then(()=>rebuildTask(t.key)); };
     drow.appendChild(b);
   });
   wrap.appendChild(drow);
   // メンバー（登録不要・誰でも自由に編集OK。名前を直接入力して担当に付けられる）
-  const rebuild=()=>{ const el=document.querySelector('.task[data-key="'+t.key+'"]'); if(el) el.replaceWith(taskEl(t)); };
   const l2=document.createElement('div'); l2.className='ae-label'; l2.style.marginTop='9px'; l2.textContent='担当メンバー（名前を直接入力してもOK・誰でも編集できます）'; wrap.appendChild(l2);
   const mrow=document.createElement('div');
   const curM=taskMembers(t);
@@ -549,14 +548,14 @@ function buildAssignEditor(t){
   curM.forEach(tok=>{
     const b=document.createElement('button'); b.className='tgl on'; b.style.background='#F5A6C8';
     b.innerHTML='✕ '+nameOf(tok);
-    b.onclick=()=>{ upsertTask(t.key,{owner_members:taskMembers(t).filter(x=>x!==tok).join(',')}).then(rebuild); };
+    b.onclick=()=>{ upsertTask(t.key,{owner_members:taskMembers(t).filter(x=>x!==tok).join(',')}).then(()=>rebuildTask(t.key)); };
     mrow.appendChild(b);
   });
   // 登録済みでまだ付いていない人＝ワンタップ追加
   Object.values(members).filter(m=>(m.name||m.email)&&!curM.includes(m.email)).forEach(m=>{
     const b=document.createElement('button'); b.className='tgl';
     b.innerHTML='＋ '+(m.name||m.email);
-    b.onclick=()=>{ upsertTask(t.key,{owner_members:[...taskMembers(t),m.email].join(',')}).then(rebuild); };
+    b.onclick=()=>{ upsertTask(t.key,{owner_members:[...taskMembers(t),m.email].join(',')}).then(()=>rebuildTask(t.key)); };
     mrow.appendChild(b);
   });
   wrap.appendChild(mrow);
@@ -564,7 +563,7 @@ function buildAssignEditor(t){
   const addRow=document.createElement('div'); addRow.className='add-mem';
   const inp=document.createElement('input'); inp.className='add-mem-inp'; inp.placeholder='名前を入力して担当に追加（例：岡本）';
   const addb=document.createElement('button'); addb.className='add-mem-btn'; addb.type='button'; addb.textContent='＋ 追加';
-  const doAdd=()=>{ const v=inp.value.trim(); if(!v) return; if(!taskMembers(t).includes(v)) upsertTask(t.key,{owner_members:[...taskMembers(t),v].join(',')}).then(rebuild); };
+  const doAdd=()=>{ const v=inp.value.trim(); if(!v) return; if(!taskMembers(t).includes(v)) upsertTask(t.key,{owner_members:[...taskMembers(t),v].join(',')}).then(()=>rebuildTask(t.key)); };
   addb.onclick=doAdd; inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doAdd(); } });
   addRow.appendChild(inp); addRow.appendChild(addb); wrap.appendChild(addRow);
   return wrap;
@@ -575,6 +574,14 @@ function patchTask(key){
   const old=document.querySelector('.task[data-key="'+key+'"]'); if(!old) return;
   if(old.contains(document.activeElement)){ const s=state[key]||{}; const cb=old.querySelector('.cbox'); old.classList.toggle('done',!!s.done); cb.classList.toggle('on',!!s.done); cb.innerHTML=s.done?'✓':''; return; }
   const t=findTask(key); if(!t) return; old.replaceWith(taskEl(t));
+}
+function rebuildTask(key){   // 担当編集後に確実に再描画（フォーカス無関係）。担当エディタが開いていたら開いたまま保つ
+  const el=document.querySelector('.task[data-key="'+key+'"]'); if(!el) return;
+  const t=findTask(key); if(!t) return;
+  const wasOpen=!!el.querySelector('.assign-editor.open');
+  const neu=taskEl(t);
+  if(wasOpen){ const ed=neu.querySelector('.assign-editor'); if(ed) ed.classList.add('open'); }
+  el.replaceWith(neu);
 }
 function findTask(key){ for(const p of PHASES){ const t=p.tasks.find(x=>x.key===key); if(t) return t; } return null; }
 function phaseStats(ph){ let d=0; ph.tasks.forEach(t=>{ if(state[t.key]&&state[t.key].done) d++; }); return {done:d,total:ph.tasks.length}; }
