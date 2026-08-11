@@ -148,6 +148,10 @@ h1{font-size:23px;margin:0;font-weight:800;letter-spacing:.5px;background:var(--
 .pc-edit:hover{border-color:var(--purple);color:var(--purple-d)}
 .t-ico{flex:0 0 auto;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#b0b8c4;align-self:flex-start;margin-top:2px}
 .t-ico svg{width:23px;height:23px}
+.add-mem{display:flex;gap:7px;margin-top:8px}
+.add-mem-inp{flex:1;min-width:0;border:2px solid var(--line);border-radius:9px;padding:6px 10px;font-size:12.5px;font-family:inherit;color:var(--ink)}
+.add-mem-inp:focus{outline:none;border-color:var(--pink)}
+.add-mem-btn{flex:0 0 auto;border:none;background:var(--pink);color:#fff;font-weight:800;border-radius:9px;padding:6px 15px;font-size:12.5px;cursor:pointer;font-family:inherit}
 @media(max-width:480px){.brand-tool h1{font-size:16.5px}.brand-logo{height:32px}.t-ico{display:none}}
 </style>
 </head>
@@ -339,9 +343,9 @@ function subscribe(){
     .subscribe((st)=>{ if(st==='SUBSCRIBED') setConn(true,'リアルタイム同期中'+(RUN!=='default'?'（'+RUN+'）':'')); });
 }
 async function upsertTask(task_key, fields){
-  if(!sb) return;
   const row=Object.assign({run_id:RUN,task_key}, state[task_key]||{}, fields, {updated_at:new Date().toISOString()});
-  delete row.created_at; state[task_key]=row;
+  delete row.created_at; state[task_key]=row;   // まずローカルに即反映（誰でもすぐ編集できる）
+  if(!sb) return;
   const {error}=await sb.from('promo_tasks').upsert(row,{onConflict:'run_id,task_key'}); if(error) console.error(error);
 }
 async function upsertMember(email, fields){
@@ -536,19 +540,33 @@ function buildAssignEditor(t){
     drow.appendChild(b);
   });
   wrap.appendChild(drow);
-  // メンバー
-  const l2=document.createElement('div'); l2.className='ae-label'; l2.style.marginTop='9px'; l2.textContent='メンバー（登録済みの人から選ぶ）'; wrap.appendChild(l2);
+  // メンバー（登録不要・誰でも自由に編集OK。名前を直接入力して担当に付けられる）
+  const rebuild=()=>{ const el=document.querySelector('.task[data-key="'+t.key+'"]'); if(el) el.replaceWith(taskEl(t)); };
+  const l2=document.createElement('div'); l2.className='ae-label'; l2.style.marginTop='9px'; l2.textContent='担当メンバー（名前を直接入力してもOK・誰でも編集できます）'; wrap.appendChild(l2);
   const mrow=document.createElement('div');
-  const regs=Object.values(members).filter(m=>m.name||m.email);
   const curM=taskMembers(t);
-  if(!regs.length){ const hint=document.createElement('div'); hint.className='ae-hint'; hint.textContent='まだ登録メンバーがいません。上の「👤」で自分を登録すると、ここに出て選べます。'; mrow.appendChild(hint); }
-  regs.forEach(m=>{
-    const on=curM.includes(m.email); const b=document.createElement('button'); b.className='tgl'+(on?' on':''); if(on) b.style.background=DEPTS[(m.depts||'').split(',')[0]]?DEPTS[(m.depts||'').split(',')[0]].color:'#F5A6C8';
-    b.innerHTML=(on?'✓ ':'＋ ')+(m.name||m.email);
-    b.onclick=()=>{ let mm=taskMembers(t); mm=mm.includes(m.email)?mm.filter(x=>x!==m.email):[...mm,m.email]; upsertTask(t.key,{owner_members:mm.join(',')}).then(()=>patchTask(t.key)); };
+  // いまの担当＝タップで外せる
+  curM.forEach(tok=>{
+    const b=document.createElement('button'); b.className='tgl on'; b.style.background='#F5A6C8';
+    b.innerHTML='✕ '+nameOf(tok);
+    b.onclick=()=>{ upsertTask(t.key,{owner_members:taskMembers(t).filter(x=>x!==tok).join(',')}).then(rebuild); };
+    mrow.appendChild(b);
+  });
+  // 登録済みでまだ付いていない人＝ワンタップ追加
+  Object.values(members).filter(m=>(m.name||m.email)&&!curM.includes(m.email)).forEach(m=>{
+    const b=document.createElement('button'); b.className='tgl';
+    b.innerHTML='＋ '+(m.name||m.email);
+    b.onclick=()=>{ upsertTask(t.key,{owner_members:[...taskMembers(t),m.email].join(',')}).then(rebuild); };
     mrow.appendChild(b);
   });
   wrap.appendChild(mrow);
+  // 名前を直接入力して追加
+  const addRow=document.createElement('div'); addRow.className='add-mem';
+  const inp=document.createElement('input'); inp.className='add-mem-inp'; inp.placeholder='名前を入力して担当に追加（例：岡本）';
+  const addb=document.createElement('button'); addb.className='add-mem-btn'; addb.type='button'; addb.textContent='＋ 追加';
+  const doAdd=()=>{ const v=inp.value.trim(); if(!v) return; if(!taskMembers(t).includes(v)) upsertTask(t.key,{owner_members:[...taskMembers(t),v].join(',')}).then(rebuild); };
+  addb.onclick=doAdd; inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doAdd(); } });
+  addRow.appendChild(inp); addRow.appendChild(addb); wrap.appendChild(addRow);
   return wrap;
 }
 
