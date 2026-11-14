@@ -55,7 +55,6 @@ DROP POLICY IF EXISTS "promo_anon_update" ON promo_tasks;
 DROP POLICY IF EXISTS "promo_anon_delete" ON promo_tasks;
 DROP POLICY IF EXISTS "promo_tasks_anon_all"   ON promo_tasks;
 DROP POLICY IF EXISTS "promo_members_anon_all" ON promo_members;
-CREATE POLICY "promo_tasks_anon_all"   ON promo_tasks   FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "promo_members_anon_all" ON promo_members FOR ALL USING (true) WITH CHECK (true);
+-- 読み書きのルールは運営が一括SQLで設定済み（管理者ログインのみ）。ここで anon 向けのポリシーを作らないこと。
 
 -- 「Success. No rows returned」でOK。
