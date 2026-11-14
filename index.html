@@ -6,6 +6,7 @@
 <title>Merone プロモーション進行ToDo</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase_config.js"></script>
+<script src="https://kumiko0814.github.io/merone-auth/admin-auth.js"></script>
 <style>
 :root{
   --pink:#F5A6C8; --pink-d:#cf8f9c; --purple:#C99BE8; --purple-d:#B98BEA;
@@ -312,7 +313,6 @@ let myEmail = (function(){ try{return localStorage.getItem('promo_my_email')||''
 
 const dot=document.getElementById('dot'), connText=document.getElementById('connText');
 function setConn(ok,msg){ dot.className='dot '+(ok===true?'on':ok===false?'off':''); connText.textContent=msg; }
-if(SUPABASE_CONFIG.enabled && window.supabase){ sb=window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey); }
 
 async function loadAll(){
   if(!sb){ setConn(false,'オフライン（保存不可）'); return; }
@@ -595,7 +595,11 @@ function updateProgress(){
 let pnt; promoNameEl.oninput=()=>{ clearTimeout(pnt); pnt=setTimeout(()=>upsertTask('__promo_name__',{memo:promoNameEl.value}),500); };
 
 /* init */
-buildMeDepts(); refreshMe(); renderRegList(); buildFilters(); render(); loadAll(); subscribe();
+buildMeDepts(); refreshMe(); renderRegList(); buildFilters(); render();
+MeroneAdminAuth.require({url:SUPABASE_CONFIG.url, anonKey:SUPABASE_CONFIG.anonKey, title:'プロモ進行ToDo 管理画面'}).then(()=>{
+  if(SUPABASE_CONFIG.enabled) sb=MeroneAdminAuth.client();
+  loadAll(); subscribe();
+});
 </script>
 </body>
 </html>
